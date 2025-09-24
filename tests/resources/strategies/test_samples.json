@@ -1,0 +1,38 @@
+{
+  "success_samples": [
+    {
+      "name": "rsi_oversold_ma_cross",
+      "version": "0.1.0",
+      "type": "screen",
+      "timeframe": "1d",
+      "logic": "AND",
+      "conditions": [
+        { "left": { "indicator": "RSI", "params": { "period": 14 }, "source": "close" }, "op": "<", "right": { "value": 30 } },
+        { "left": { "indicator": "MA", "params": { "window": 20 }, "source": "close" }, "op": "cross_up", "right": { "indicator": "MA", "params": { "window": 60 }, "source": "close" } }
+      ]
+    }
+  ],
+  "failure_samples": [
+    {
+      "name": "bad_missing_fields",
+      "version": "0.1.0",
+      "type": "screen",
+      "timeframe": "1d",
+      "logic": "AND",
+      "conditions": [
+        { "left": { "indicator": "RSI", "params": { "period": 14 } }, "op": "less_than", "right": { "value": 30 } }
+      ]
+    },
+    {
+      "name": "bad_param_out_of_range",
+      "version": "0.1.0",
+      "type": "screen",
+      "timeframe": "1d",
+      "logic": "AND",
+      "conditions": [
+        { "left": { "indicator": "EMA", "params": { "window": 1 } }, "op": ">", "right": { "series": "close" } },
+        { "left": { "indicator": "MACD", "params": { "fast": 26, "slow": 12, "signal": 9 } }, "op": ">", "right": { "value": 0 } }
+      ]
+    }
+  ]
+}

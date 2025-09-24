@@ -1,0 +1,48 @@
+{
+  "results": [
+    {
+      "idx": 0,
+      "kind": "success_samples",
+      "name": "rsi_oversold_ma_cross",
+      "result": {
+        "status": 200,
+        "ok": true
+      }
+    },
+    {
+      "idx": 0,
+      "kind": "failure_samples",
+      "name": "bad_missing_fields",
+      "result": {
+        "status": 422,
+        "errors": [
+          {
+            "path": "conditions[0].op",
+            "code": "invalid_enum",
+            "message": "unexpected value; permitted: '>', '<', '>=', '<=', '==', '!=', 'cross_up', 'cross_down'"
+          }
+        ]
+      }
+    },
+    {
+      "idx": 1,
+      "kind": "failure_samples",
+      "name": "bad_param_out_of_range",
+      "result": {
+        "status": 422,
+        "errors": [
+          {
+            "path": "conditions[0].left.params",
+            "code": "out_of_range",
+            "message": "window out of range [2,400]"
+          },
+          {
+            "path": "conditions[1].left.params",
+            "code": "invalid_relation",
+            "message": "fast must be less than slow"
+          }
+        ]
+      }
+    }
+  ]
+}

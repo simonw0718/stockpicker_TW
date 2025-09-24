@@ -1,0 +1,465 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/strategy.schema.json",
+  "title": "Strategy",
+  "type": "object",
+  "required": [
+    "name",
+    "version",
+    "type",
+    "timeframe",
+    "logic",
+    "conditions"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 64
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "screen",
+        "backtest"
+      ]
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "timeframe": {
+      "type": "string",
+      "enum": [
+        "1d"
+      ]
+    },
+    "universe": {
+      "type": "object"
+    },
+    "logic": {
+      "type": "string",
+      "enum": [
+        "AND",
+        "OR"
+      ]
+    },
+    "params": {
+      "type": "object"
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "conditions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/Condition"
+      }
+    }
+  },
+  "$defs": {
+    "Condition": {
+      "type": "object",
+      "required": [
+        "left",
+        "op",
+        "right"
+      ],
+      "properties": {
+        "left": {
+          "$ref": "#/$defs/Operand"
+        },
+        "op": {
+          "type": "string",
+          "enum": [
+            ">",
+            "<",
+            ">=",
+            "<=",
+            "==",
+            "!=",
+            "cross_up",
+            "cross_down"
+          ]
+        },
+        "right": {
+          "$ref": "#/$defs/Operand"
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "Operand": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/NumberOperand"
+        },
+        {
+          "$ref": "#/$defs/SeriesRefOperand"
+        },
+        {
+          "$ref": "#/$defs/IndicatorRefOperand"
+        }
+      ]
+    },
+    "NumberOperand": {
+      "type": "object",
+      "required": [
+        "value"
+      ],
+      "properties": {
+        "value": {
+          "type": "number",
+          "minimum": -1000000000.0,
+          "maximum": 1000000000.0
+        }
+      },
+      "additionalProperties": false
+    },
+    "SeriesRefOperand": {
+      "type": "object",
+      "required": [
+        "series"
+      ],
+      "properties": {
+        "series": {
+          "type": "string",
+          "enum": [
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume"
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "IndicatorRefOperand": {
+      "type": "object",
+      "required": [
+        "indicator",
+        "params"
+      ],
+      "properties": {
+        "indicator": {
+          "type": "string",
+          "enum": [
+            "MA",
+            "EMA",
+            "RSI",
+            "MACD",
+            "BOLL",
+            "KD",
+            "BIAS",
+            "VOLUME",
+            "DIFF"
+          ]
+        },
+        "params": {
+          "type": "object"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "close",
+            "open",
+            "high",
+            "low",
+            "typical",
+            "hlc3"
+          ]
+        },
+        "field": {
+          "type": "string"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "indicator": {
+                "const": "MA"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "params": {
+                "type": "object",
+                "required": [
+                  "window"
+                ],
+                "properties": {
+                  "window": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 400
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "indicator": {
+                "const": "EMA"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "params": {
+                "type": "object",
+                "required": [
+                  "window"
+                ],
+                "properties": {
+                  "window": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 400
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "indicator": {
+                "const": "RSI"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "params": {
+                "type": "object",
+                "required": [
+                  "period"
+                ],
+                "properties": {
+                  "period": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 250
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "indicator": {
+                "const": "MACD"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "field": {
+                "type": "string",
+                "enum": [
+                  "macd",
+                  "signal",
+                  "hist"
+                ]
+              },
+              "params": {
+                "type": "object",
+                "required": [
+                  "fast",
+                  "slow",
+                  "signal"
+                ],
+                "properties": {
+                  "fast": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 400
+                  },
+                  "slow": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 400
+                  },
+                  "signal": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 200
+                  }
+                },
+                "description": "Constraint fast < slow enforced by application validator"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "indicator": {
+                "const": "BOLL"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "field": {
+                "type": "string",
+                "enum": [
+                  "upper",
+                  "middle",
+                  "lower"
+                ]
+              },
+              "params": {
+                "type": "object",
+                "required": [
+                  "window",
+                  "mult"
+                ],
+                "properties": {
+                  "window": {
+                    "type": "integer",
+                    "minimum": 5,
+                    "maximum": 400
+                  },
+                  "mult": {
+                    "type": "number",
+                    "minimum": 0.5,
+                    "maximum": 5
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "indicator": {
+                "const": "KD"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "field": {
+                "type": "string",
+                "enum": [
+                  "k",
+                  "d"
+                ]
+              },
+              "params": {
+                "type": "object",
+                "required": [
+                  "k_period",
+                  "d_period"
+                ],
+                "properties": {
+                  "k_period": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 200
+                  },
+                  "d_period": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 200
+                  },
+                  "smooth": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 20
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "indicator": {
+                "const": "BIAS"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "params": {
+                "type": "object",
+                "required": [
+                  "window"
+                ],
+                "properties": {
+                  "window": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 400
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "indicator": {
+                "const": "VOLUME"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "params": {
+                "type": "object",
+                "properties": {
+                  "window": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 400
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "indicator": {
+                "const": "DIFF"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "params": {
+                "type": "object",
+                "required": [
+                  "left",
+                  "right"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
