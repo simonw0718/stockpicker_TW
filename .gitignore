@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+data/app.db
+data/duckdb/
+data/parquet/
+.DS_Store
