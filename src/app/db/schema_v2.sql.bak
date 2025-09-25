@@ -1,26 +1,25 @@
--- schema_v2: 應用層與回測產物表（修正版）
+-- schema_v2: 應用層與回測產物表
 
 CREATE TABLE IF NOT EXISTS strategies (
     id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL,
-    version TEXT NOT NULL,
+    name TEXT UNIQUE,
+    version TEXT,
     type TEXT,
     description TEXT,
-    payload TEXT,                 -- 存完整策略 JSON
     is_active BOOLEAN DEFAULT 1,
     created_at TEXT,
-    updated_at TEXT,
-    deleted_at TEXT DEFAULT NULL, -- 軟刪欄位
-    UNIQUE(name, version)
+    updated_at TEXT
 );
 
--- 單筆快照：每個 strategy_id 對應一筆 JSON
 CREATE TABLE IF NOT EXISTS params (
     id INTEGER PRIMARY KEY,
-    strategy_id INTEGER UNIQUE,
-    params_json TEXT,
+    strategy_id INTEGER,
+    key TEXT,
+    value TEXT,
+    scope TEXT,
     created_at TEXT,
     updated_at TEXT,
+    UNIQUE(strategy_id, key, scope),
     FOREIGN KEY(strategy_id) REFERENCES strategies(id) ON DELETE CASCADE
 );
 
@@ -104,5 +103,6 @@ CREATE TABLE IF NOT EXISTS watchlist_items (
     UNIQUE(watchlist_id, symbol),
     FOREIGN KEY(watchlist_id) REFERENCES watchlist(id) ON DELETE CASCADE
 );
+
 
 DROP TABLE IF EXISTS lists;
