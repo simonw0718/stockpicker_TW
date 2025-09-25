@@ -1,5 +1,5 @@
 # tests/test_runners_contracts.py
-from backend.app.runners import scan_runner, backtest_runner, alert_runner
+from app.runners import scan_runner, backtest_runner, alert_runner
 
 def test_scan_runner_contract():
     results = scan_runner.run_scan(["2330", "2454"])

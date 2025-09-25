@@ -3,9 +3,9 @@ import pathlib
 import pytest
 from fastapi.testclient import TestClient
 
-from backend.app.main import app
-from backend.db import migrate_v2
-from backend.db.conn import DB_PATH
+from app.main import app
+from app.db import migrate_v2
+from app.db.conn import DB_PATH
 
 @pytest.fixture(scope="session", autouse=True)
 def _init_db():

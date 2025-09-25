@@ -1,6 +1,6 @@
 # tests/test_schema_v2.py
 import sqlite3
-from backend.db import migrate_v2
+from app.db import migrate_v2
 
 def test_schema_v2_tables(tmp_path):
     db_path = tmp_path / "app.db"

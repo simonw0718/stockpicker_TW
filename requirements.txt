@@ -1,6 +1,6 @@
 # Web & Schema
-fastapi>=0.115
-pydantic>=2.7
+fastapi<0.115
+pydantic<2
 
 # Server (本機跑用；CI 可選)
 uvicorn>=0.30

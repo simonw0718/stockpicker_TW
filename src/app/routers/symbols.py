@@ -1,6 +1,6 @@
 # backend/app/routers/symbols.py
 from fastapi import APIRouter, Query
-from backend.app.services.resolve import normalize_code_or_name
+from app.services.resolve import normalize_code_or_name
 
 router = APIRouter()
 
