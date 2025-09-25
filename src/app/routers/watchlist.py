@@ -2,9 +2,9 @@
 import json
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Path, Request
-from backend.db.conn import get_conn
-from backend.app.services.resolve import normalize_code_or_name
-from backend.app.models.watchlists import (
+from app.db.conn import get_conn
+from app.services.resolve import normalize_code_or_name
+from app.models.watchlists import (
     WatchListCreate, WatchListUpdate, WatchListOut, WatchListItem
 )
 
@@ -110,7 +110,11 @@ def create_watchlist(payload: WatchListCreate, request: Request):
         """,
         (name,),
     )
-    wl_id = cur.lastrowid
+    wl_id_raw = cur.lastrowid
+    if wl_id_raw is None:
+        # 這在 SQLite 正常情況不會發生，但保險起見加個守衛
+        raise RuntimeError("failed to get lastrowid after INSERT watchlist")
+    wl_id: int = int(wl_id_raw)
     _insert_items(conn, wl_id, codes)
     conn.commit()
 
