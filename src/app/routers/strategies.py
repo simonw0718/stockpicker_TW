@@ -1,10 +1,13 @@
 # src/app/routers/strategies.py
 from __future__ import annotations
-import uuid
-from typing import Dict, Tuple, Optional
-from fastapi import APIRouter, HTTPException, Query, Path, Body
 
-from app.domain.strategies.validation import Strategy, ValidationError, format_validation_error
+import uuid
+from typing import Any, Dict, Tuple, Optional
+
+from fastapi import APIRouter, HTTPException, Query, Path, Body
+from pydantic import BaseModel, ValidationError  # 由 pydantic 匯入 ValidationError
+
+from app.domain.strategies.validation import Strategy, format_validation_error
 
 router = APIRouter()
 
@@ -12,18 +15,45 @@ router = APIRouter()
 _DB: Dict[str, Dict] = {}                 # id -> {strategy: dict, deleted_at: Optional[str]}
 _IDX: Dict[Tuple[str, str], str] = {}     # (name, version) -> id
 
+
+# ---- 序列化工具：讓 v1/v2 與型別檢查器都開心 ----
+def _model_to_dict(m: Any) -> Dict[str, Any]:
+    """
+    將 Pydantic Model 轉成 dict。
+    - v2: 使用 model_dump()
+    - v1: 使用 dict()
+    - 其他: 嘗試 __dict__
+    """
+    if isinstance(m, BaseModel):
+        md = getattr(m, "model_dump", None)
+        if callable(md):                  # Pydantic v2
+            return md()                   # type: ignore[call-arg]
+        return m.dict()                   # Pydantic v1
+    if isinstance(m, dict):
+        return m
+    return dict(getattr(m, "__dict__", {}))
+
+
 def _ensure_not_conflict(name: str, version: str, *, exclude_id: Optional[str] = None) -> None:
     k = (name, version)
     if k in _IDX:
         if exclude_id is None or _IDX[k] != exclude_id:
             # 已存在相同 name+version
-            raise HTTPException(status_code=409, detail={"error": {"code": "CONFLICT", "message": "name+version already exists"}})
+            raise HTTPException(
+                status_code=409,
+                detail={"error": {"code": "CONFLICT", "message": "name+version already exists"}}
+            )
+
 
 def _get_alive(id_: str) -> Dict:
     row = _DB.get(id_)
     if not row or row.get("deleted_at"):
-        raise HTTPException(status_code=404, detail={"error": {"code": "NOT_FOUND", "message": f"strategy not found: {id_}"}})
+        raise HTTPException(
+            status_code=404,
+            detail={"error": {"code": "NOT_FOUND", "message": f"strategy not found: {id_}"}}
+        )
     return row
+
 
 # --- Utilities ---
 def _validate_strategy_dict(payload: dict) -> Strategy:
@@ -31,6 +61,7 @@ def _validate_strategy_dict(payload: dict) -> Strategy:
         return Strategy(**payload)
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=format_validation_error(exc))
+
 
 # --------------------------------
 # GET /  列表（極簡）
@@ -45,6 +76,7 @@ def list_strategies():
         items.append({"id": sid, "name": s["name"], "version": s["version"]})
     return {"items": items}
 
+
 # --------------------------------
 # POST /strategies/validate  (1A 已有：這裡整合保留)
 # body: { "strategy": { ... } }
@@ -52,9 +84,13 @@ def list_strategies():
 @router.post("/validate")
 def validate_strategy(body: dict = Body(...)):
     if "strategy" not in body:
-        raise HTTPException(status_code=422, detail={"status": 422, "errors": [{"path":"strategy","code":"missing_required","message":"field required"}]})
+        raise HTTPException(
+            status_code=422,
+            detail={"status": 422, "errors": [{"path": "strategy", "code": "missing_required", "message": "field required"}]}
+        )
     _ = _validate_strategy_dict(body["strategy"])
     return {"ok": True}
+
 
 # --------------------------------
 # POST /  Create
@@ -65,15 +101,19 @@ def validate_strategy(body: dict = Body(...)):
 @router.post("", status_code=201)
 def create_strategy(body: dict = Body(...)):
     if "strategy" not in body:
-        raise HTTPException(status_code=422, detail={"status": 422, "errors": [{"path":"strategy","code":"missing_required","message":"field required"}]})
+        raise HTTPException(
+            status_code=422,
+            detail={"status": 422, "errors": [{"path": "strategy", "code": "missing_required", "message": "field required"}]}
+        )
     s_model = _validate_strategy_dict(body["strategy"])
-    s = s_model.dict()
+    s = _model_to_dict(s_model)
 
     _ensure_not_conflict(s["name"], s["version"])
     sid = str(uuid.uuid4())
     _DB[sid] = {"strategy": s, "deleted_at": None}
     _IDX[(s["name"], s["version"])] = sid
     return {"id": sid, "name": s["name"], "version": s["version"]}
+
 
 # --------------------------------
 # GET /{id}  或  GET /?name=&version=
@@ -84,6 +124,7 @@ def get_strategy(
 ):
     row = _get_alive(id)
     return {"id": id, **row["strategy"]}
+
 
 @router.get("")
 def get_strategy_by_nv(
@@ -98,6 +139,7 @@ def get_strategy_by_nv(
     row = _get_alive(sid)
     return {"id": sid, **row["strategy"]}
 
+
 # --------------------------------
 # PUT /{id}  Update（需先通過 1A 驗證，再更新；可更名/改版，處理 409）
 # --------------------------------
@@ -105,10 +147,13 @@ def get_strategy_by_nv(
 def update_strategy(id: str, body: dict = Body(...)):
     row = _get_alive(id)
     if "strategy" not in body:
-        raise HTTPException(status_code=422, detail={"status": 422, "errors": [{"path":"strategy","code":"missing_required","message":"field required"}]})
+        raise HTTPException(
+            status_code=422,
+            detail={"status": 422, "errors": [{"path": "strategy", "code": "missing_required", "message": "field required"}]}
+        )
 
     s_model = _validate_strategy_dict(body["strategy"])
-    s = s_model.dict()
+    s = _model_to_dict(s_model)
 
     # 若改了 name+version，要檢查衝突
     old = row["strategy"]
@@ -121,6 +166,7 @@ def update_strategy(id: str, body: dict = Body(...)):
     row["strategy"] = s
     return {"id": id, "name": s["name"], "version": s["version"]}
 
+
 # --------------------------------
 # DELETE /{id}  邏輯刪除
 # --------------------------------
@@ -129,6 +175,7 @@ def delete_strategy(id: str):
     row = _get_alive(id)
     row["deleted_at"] = "now"   # Phase1C 先不記實際時間
     return
+
 
 # --------------------------------
 # POST /{id}/validate  用既有策略驗證能否執行（這期先做 schema validate）
