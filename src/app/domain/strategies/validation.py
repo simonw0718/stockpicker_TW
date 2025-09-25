@@ -137,7 +137,7 @@ class IndicatorRefOperand(BaseModel):
         spec.validator_fn(v)  # 不合法 raise
         return v
 
-    @root_validator
+    @root_validator(skip_on_failure=True)
     def _apply_field_policy(cls, values):
         ind   = values.get('indicator')
         field = values.get('field')
@@ -162,7 +162,7 @@ class Condition(BaseModel):
     right: Operand
     note: Optional[str] = None
 
-    @root_validator
+    @root_validator(skip_on_failure=True)
     def _check_op_compatibility(cls, values):
         op = values.get('op')
         left = values.get('left')
