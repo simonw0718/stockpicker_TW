@@ -6,3 +6,6 @@ data/app.db
 data/duckdb/
 data/parquet/
 .DS_Store
+
+data/
+*.db
