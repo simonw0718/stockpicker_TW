@@ -2,8 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [ main, master ]
+    branches:
+      - "**"           # 任何分支都觸發
   pull_request:
+    branches:
+      - "**"
+  workflow_dispatch:    # 允許手動點擊觸發
 
 jobs:
   test:
