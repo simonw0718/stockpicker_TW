@@ -1,0 +1,18 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/pyright/main/packages/pyright/schemas/pyrightconfig.schema.json",
+  "typeCheckingMode": "basic",
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": ["./src"],
+      "pythonVersion": "3.13"
+    }
+  ],
+  "exclude": [
+    "**/__pycache__",
+    ".venv",
+    "data",
+    "docs/_backup",
+    "backend"
+  ]
+}
