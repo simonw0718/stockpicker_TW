@@ -1,3 +1,4 @@
+# src/app/indicators/builtin/ma.py
 import pandas as pd
 
 def compute(data: pd.DataFrame, params: dict, *, timeframe: str="1d", field=None) -> pd.Series:

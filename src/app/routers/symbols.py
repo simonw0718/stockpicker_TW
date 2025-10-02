@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Query
 from app.services.resolve import normalize_code_or_name
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1/symbols", tags=["symbols"])
 
 @router.get("/search")
 def search_symbols(q: str = Query(..., description="代碼或中文名稱片段")):

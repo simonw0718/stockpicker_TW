@@ -1,5 +1,7 @@
+# src/app/main.py
 from fastapi import FastAPI
-from app.routers import symbols, watchlist, strategies, alerts
+from app.routers import symbols, watchlist, strategies, alerts, backtest, scan, signals
+from app.routers import metrics  # ← 新增
 
 app = FastAPI(title="StockPicker TW API", version="0.1.0")
 
@@ -8,7 +10,11 @@ def health():
     return {"status": "ok"}
 
 # Mount routers
-app.include_router(symbols.router,    prefix="/api/v1/symbols",    tags=["symbols"])
-app.include_router(watchlist.router,  prefix="/api/v1/watchlist",  tags=["watchlist"])
-app.include_router(strategies.router, prefix="/api/v1/strategies", tags=["strategies"])
-app.include_router(alerts.router,     prefix="/api/v1/alerts",     tags=["alerts"])
+app.include_router(symbols.router)
+app.include_router(watchlist.router)
+app.include_router(strategies.router)
+app.include_router(alerts.router)
+app.include_router(backtest.router)
+app.include_router(scan.router)
+app.include_router(signals.router)
+app.include_router(metrics.router)  # ← 新增

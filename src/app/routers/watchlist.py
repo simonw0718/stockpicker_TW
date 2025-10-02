@@ -1,4 +1,4 @@
-# backend/app/routers/watchlist.py
+# src/app/routers/watchlist.py
 import json
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Path, Request
@@ -8,7 +8,7 @@ from app.models.watchlists import (
     WatchListCreate, WatchListUpdate, WatchListOut, WatchListItem
 )
 
-router = APIRouter()
+router = APIRouter(prefix="/api/v1/watchlist", tags=["watchlist"])
 
 # ---- 輕量限流 ----
 from time import time
@@ -29,7 +29,6 @@ def _err(code: str, msg: str):
     return HTTPException(status_code=400, detail={"error": {"code": code, "message": msg}})
 
 # ---------- 正規化工具 ----------
-
 def _ensure_code(s: str) -> str:
     code, choices = normalize_code_or_name(s)
     if code:
@@ -65,7 +64,6 @@ def _clean_name(raw_name: str) -> str:
     return name
 
 # ---------- DB helpers ----------
-
 def _fetch_items(conn, watchlist_id: int) -> List[WatchListItem]:
     rows = conn.execute(
         "SELECT symbol, position FROM watchlist_items WHERE watchlist_id = ? ORDER BY position, id",
@@ -83,45 +81,59 @@ def _to_out(conn, row) -> WatchListOut:
     )
 
 def _insert_items(conn, watchlist_id: int, codes: List[str]) -> None:
-    # 依輸入順序給 position
+    # 依輸入順序給 position；若重複，ON CONFLICT 忽略，避免 UNIQUE 炸掉
     for idx, code in enumerate(codes):
         conn.execute(
             """
-            INSERT INTO watchlist_items(watchlist_id, symbol, position, created_at, updated_at)
+            INSERT OR IGNORE INTO watchlist_items
+                (watchlist_id, symbol, position, created_at, updated_at)
             VALUES(?, ?, ?, datetime('now'), datetime('now'))
             """,
             (watchlist_id, code, idx),
         )
 
 # ---------- CRUD（/api/v1/watchlist 下） ----------
-
-@router.post("", response_model=WatchListOut, status_code=201)
+@router.post("/", response_model=WatchListOut, status_code=201)
 def create_watchlist(payload: WatchListCreate, request: Request):
     _ratelimit(request)
     name = _clean_name(payload.name)
     codes = _normalize_symbols(payload.symbols)
 
     conn = get_conn()
-    cur = conn.cursor()
-    cur.execute(
-        """
-        INSERT INTO watchlist(name, owner, meta, created_at, updated_at)
-        VALUES(?, NULL, NULL, datetime('now'), datetime('now'))
-        """,
-        (name,),
-    )
-    wl_id_raw = cur.lastrowid
-    if wl_id_raw is None:
-        # 這在 SQLite 正常情況不會發生，但保險起見加個守衛
-        raise RuntimeError("failed to get lastrowid after INSERT watchlist")
-    wl_id: int = int(wl_id_raw)
-    _insert_items(conn, wl_id, codes)
-    conn.commit()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            """
+            INSERT INTO watchlist(name, owner, meta, created_at, updated_at)
+            VALUES(?, NULL, NULL, datetime('now'), datetime('now'))
+            """,
+            (name,),
+        )
+        wl_id_raw = cur.lastrowid
+        if wl_id_raw is None:
+            raise RuntimeError("failed to get lastrowid after INSERT watchlist")
+        wl_id: int = int(wl_id_raw)
 
-    row = conn.execute("SELECT * FROM watchlist WHERE id = ?", (wl_id,)).fetchone()
-    return _to_out(conn, row)
+        _insert_items(conn, wl_id, codes)
+        conn.commit()
 
-@router.get("", response_model=List[WatchListOut])
+        row = conn.execute("SELECT * FROM watchlist WHERE id = ?", (wl_id,)).fetchone()
+        return _to_out(conn, row)
+
+    except Exception as e:
+        # 任何異常都先回滾，避免留下鎖
+        conn.rollback()
+        # 將 SQLite 的 UNIQUE error 轉成 409 更合理
+        if "UNIQUE" in str(e):
+            raise HTTPException(status_code=409, detail={"error": {"code": "DUPLICATE_SYMBOL", "message": str(e)}})
+        raise
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+@router.get("/", response_model=List[WatchListOut])
 def list_watchlists():
     conn = get_conn()
     rows = conn.execute("SELECT * FROM watchlist ORDER BY id").fetchall()
@@ -143,14 +155,12 @@ def update_watchlist(list_id: int, payload: WatchListUpdate, request: Request):
     if not row:
         raise _err("NOT_FOUND", f"watchlist id not found: {list_id}")
 
-    # name
     name = _clean_name(payload.name) if payload.name is not None else row["name"]
     conn.execute(
         "UPDATE watchlist SET name=?, updated_at=datetime('now') WHERE id=?",
         (name, list_id),
     )
 
-    # items（若提供 symbols，採「全刪重建」以保序）
     if payload.symbols is not None:
         codes = _normalize_symbols(payload.symbols)
         conn.execute("DELETE FROM watchlist_items WHERE watchlist_id = ?", (list_id,))

@@ -23,3 +23,6 @@ compare:
 
 validate-ci: validate compare
 > @echo "All good ✔"
+
+scan-cron-test:
+> pytest -q tests/api/test_scan_scheduler.py

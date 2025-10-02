@@ -1,27 +1,23 @@
 # tests/conftest.py
-import pathlib
 import pytest
 from fastapi.testclient import TestClient
 
-from app.main import app
-from app.db import migrate_v2
-from app.db.conn import DB_PATH
+from src.app.main import app
+from src.app.db import migrate_v2
 
-@pytest.fixture(scope="session", autouse=True)
-def _init_db():
+@pytest.fixture(autouse=True, scope="function")
+def reset_db():
     """
-    測試前自動建立 data/app.db 並套用 schema_v2。
+    每個測試函式前都重建乾淨的 data/app.db。
+    確保不會殘留舊資料，避免 UNIQUE/position/ghost rows 問題。
     """
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     migrate_v2.init_db()
     yield
-    # 若不想留下測試資料庫，可在這裡清理：
-    # try: DB_PATH.unlink()
-    # except FileNotFoundError: pass
 
 @pytest.fixture()
 def client() -> TestClient:
     """
     提供 FastAPI 測試用 client。
+    reset_db fixture 會確保 DB 乾淨。
     """
     return TestClient(app)
